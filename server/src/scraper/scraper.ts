@@ -180,14 +180,14 @@ export class StoreScraper {
 
     // 1. Check and dismiss cookie overlay if present
     try {
-      const cookieBanner = page.locator('.cookie-banner, .cookie-overlay');
-      if (await cookieBanner.isVisible({ timeout: 1200 }).catch(() => false)) {
-        onProgress('Dismissing cookie banner...');
-        const acceptBtn = page.locator('button:has-text("Accept"), button:has-text("Accept cookies")');
-        if (await acceptBtn.isVisible()) {
-          await acceptBtn.click();
-        }
-      }
+      await page.evaluate(() => {
+        const overlays = document.querySelectorAll('.cookie-overlay, .cookie-banner, [class*="cookie"]');
+        overlays.forEach(el => {
+          const btn = el.querySelector('button');
+          if (btn) btn.click();
+          el.remove();
+        });
+      });
     } catch {
       // Ignore if no cookie banner
     }
@@ -232,6 +232,7 @@ export class StoreScraper {
         { timeout: 5000 }
       );
 
+      await page.evaluate(() => document.querySelectorAll('.cookie-overlay, .cookie-banner').forEach(e => e.remove())).catch(() => {});
       onProgress('Clicking "Reveal price"...');
       await revealBtn.click();
 
@@ -268,7 +269,17 @@ export class StoreScraper {
       const priceMain = document.querySelector('.price-main');
       if (!priceMain) return null;
 
-      // Find all child elements
+      // First, check for primary prominent price element (tag 'b', 'strong', or class containing 'pv-')
+      const primaryEl = priceMain.querySelector('b, strong, [class*="pv-"]') as HTMLElement | null;
+      if (primaryEl) {
+        const style = window.getComputedStyle(primaryEl);
+        if (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
+          const text = primaryEl.textContent?.trim() || '';
+          if (text.length > 0) return text;
+        }
+      }
+
+      // Fallback: iterate child elements
       const children = Array.from(priceMain.children) as HTMLElement[];
       for (const el of children) {
         const style = window.getComputedStyle(el);
@@ -277,11 +288,15 @@ export class StoreScraper {
         if (
           style.display === 'none' ||
           style.visibility === 'hidden' ||
+          parseFloat(style.opacity || '1') < 0.9 ||
           el.getAttribute('aria-hidden') === 'true' ||
           el.classList.contains('price-value') ||
           el.classList.contains('amount') ||
+          el.classList.contains('mr-') ||
+          el.classList.contains('sl-') ||
           style.textDecorationLine.includes('line-through') || // MRP
           text.includes('% off') ||
+          text.includes('Deal price') ||
           text.includes('Updating')
         ) {
           continue;

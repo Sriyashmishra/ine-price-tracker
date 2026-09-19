@@ -14,8 +14,8 @@ export const App: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
 
-  // Selected product for chart view
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  // Selected product ID for chart view
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [priceHistory, setPriceHistory] = useState<PriceHistoryItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
 
@@ -31,21 +31,13 @@ export const App: React.FC = () => {
     try {
       const data = await api.getTrackedProducts();
       setProducts(data);
-
-      // Default select first product for chart if none selected
-      if (!selectedProduct && data.length > 0) {
-        setSelectedProduct(data[0]);
-      } else if (selectedProduct) {
-        // Keep updated state of current selected product
-        const updated = data.find(p => p.id === selectedProduct.id);
-        if (updated) setSelectedProduct(updated);
-      }
+      setSelectedProductId(prev => prev || (data.length > 0 ? data[0].id : null));
     } catch (err: any) {
       console.error('Failed to load products:', err);
     } finally {
       setLoading(false);
     }
-  }, [selectedProduct]);
+  }, []);
 
   // Initial fetch and 30-second background polling
   useEffect(() => {
@@ -53,6 +45,9 @@ export const App: React.FC = () => {
     const interval = setInterval(fetchProducts, 30000);
     return () => clearInterval(interval);
   }, [fetchProducts]);
+
+  // Derived selected product
+  const selectedProduct = products.find(p => p.id === selectedProductId) || (products.length > 0 ? products[0] : null);
 
   // Load history when selected product changes
   useEffect(() => {
@@ -118,8 +113,8 @@ export const App: React.FC = () => {
     }
     try {
       await api.untrackProduct(product.id);
-      if (selectedProduct?.id === product.id) {
-        setSelectedProduct(null);
+      if (selectedProductId === product.id) {
+        setSelectedProductId(null);
       }
       await fetchProducts();
     } catch (err: any) {
@@ -174,7 +169,7 @@ export const App: React.FC = () => {
               <ProductTable
                 products={products}
                 selectedProductId={selectedProduct?.id || null}
-                onSelectProduct={p => setSelectedProduct(p)}
+                onSelectProduct={p => setSelectedProductId(p.id)}
                 onViewLogs={handleViewLogs}
                 onScrapeNow={handleScrapeNow}
                 onUntrack={handleUntrack}
@@ -191,7 +186,7 @@ export const App: React.FC = () => {
         onClose={() => setIsSearchOpen(false)}
         onProductTracked={newProd => {
           fetchProducts();
-          setSelectedProduct(newProd);
+          setSelectedProductId(newProd.id);
           setIsSearchOpen(false);
         }}
         trackedProductIds={trackedProductIds}

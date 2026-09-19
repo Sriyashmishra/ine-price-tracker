@@ -53,11 +53,13 @@ export function parsePrice(rawText: string): number {
   cleaned = cleaned.replace(/\(incl\.?.*?\)/i, '');
   cleaned = cleaned.replace(/Deal price/i, '');
 
-  // 3. Match euro format: "1.499,00" -> replace . with '' and , with .
-  if (/\b\d{1,3}(?:\.\d{3})*,\d{2}\b/.test(cleaned)) {
+  // 3. Comma handling:
+  // In INR/standard currency (e.g. ₹1,88,931 or ₹2,25,668), commas are grouping separators.
+  // Only convert comma to decimal if it is strictly European decimal format (e.g. "123,45" at end of string without dot).
+  if (/(?:\s|^)\d{1,3}(?:\.\d{3})*,\d{2}$/.test(cleaned.trim())) {
     cleaned = cleaned.replace(/\./g, '').replace(',', '.');
   } else {
-    // Standard format: remove commas used as thousand separators
+    // Grouping separator: remove commas
     cleaned = cleaned.replace(/,/g, '');
   }
 

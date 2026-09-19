@@ -1,0 +1,225 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { Navbar } from './components/Navbar.js';
+import { StatsCards } from './components/StatsCards.js';
+import { ProductTable } from './components/ProductTable.js';
+import { PriceChart } from './components/PriceChart.js';
+import { ScrapeLogsModal } from './components/ScrapeLogsModal.js';
+import { ProductSearchModal } from './components/ProductSearchModal.js';
+import { api } from './services/api.js';
+import { Product, PriceHistoryItem, ScrapeLogItem } from './types/index.js';
+import { Loader2, RefreshCw } from 'lucide-react';
+
+export const App: React.FC = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
+
+  // Selected product for chart view
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [priceHistory, setPriceHistory] = useState<PriceHistoryItem[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState<boolean>(false);
+
+  // Selected product for logs modal
+  const [logsProduct, setLogsProduct] = useState<Product | null>(null);
+  const [scrapeLogs, setScrapeLogs] = useState<ScrapeLogItem[]>([]);
+
+  // Set of product IDs currently undergoing scrape
+  const [scrapingIds, setScrapingIds] = useState<Set<string>>(new Set());
+
+  // Load tracked products
+  const fetchProducts = useCallback(async () => {
+    try {
+      const data = await api.getTrackedProducts();
+      setProducts(data);
+
+      // Default select first product for chart if none selected
+      if (!selectedProduct && data.length > 0) {
+        setSelectedProduct(data[0]);
+      } else if (selectedProduct) {
+        // Keep updated state of current selected product
+        const updated = data.find(p => p.id === selectedProduct.id);
+        if (updated) setSelectedProduct(updated);
+      }
+    } catch (err: any) {
+      console.error('Failed to load products:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedProduct]);
+
+  // Initial fetch and 30-second background polling
+  useEffect(() => {
+    fetchProducts();
+    const interval = setInterval(fetchProducts, 30000);
+    return () => clearInterval(interval);
+  }, [fetchProducts]);
+
+  // Load history when selected product changes
+  useEffect(() => {
+    if (!selectedProduct) {
+      setPriceHistory([]);
+      return;
+    }
+
+    let isCurrent = true;
+    setLoadingHistory(true);
+
+    api
+      .getProductHistory(selectedProduct.id)
+      .then(hist => {
+        if (isCurrent) setPriceHistory(hist);
+      })
+      .catch(console.error)
+      .finally(() => {
+        if (isCurrent) setLoadingHistory(false);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [selectedProduct?.id]);
+
+  // Handle on-demand scrape for an individual product
+  const handleScrapeNow = async (product: Product) => {
+    setScrapingIds(prev => new Set(prev).add(product.id));
+    try {
+      await api.triggerProductScrape(product.id);
+      await fetchProducts();
+      if (selectedProduct?.id === product.id) {
+        const hist = await api.getProductHistory(product.id);
+        setPriceHistory(hist);
+      }
+    } catch (err: any) {
+      alert(`Scrape error: ${err.message}`);
+    } finally {
+      setScrapingIds(prev => {
+        const next = new Set(prev);
+        next.delete(product.id);
+        return next;
+      });
+    }
+  };
+
+  // Handle viewing audit logs
+  const handleViewLogs = async (product: Product) => {
+    setLogsProduct(product);
+    try {
+      const logs = await api.getProductLogs(product.id);
+      setScrapeLogs(logs);
+    } catch (err: any) {
+      console.error('Failed to fetch logs:', err);
+    }
+  };
+
+  // Handle product untrack / delete
+  const handleUntrack = async (product: Product) => {
+    if (!window.confirm(`Stop tracking and remove history for "${product.name}"?`)) {
+      return;
+    }
+    try {
+      await api.untrackProduct(product.id);
+      if (selectedProduct?.id === product.id) {
+        setSelectedProduct(null);
+      }
+      await fetchProducts();
+    } catch (err: any) {
+      alert(`Failed to delete: ${err.message}`);
+    }
+  };
+
+  const trackedProductIds = new Set(products.map(p => p.store_product_id));
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-blue-600 selection:text-white">
+      {/* Header / Navbar */}
+      <Navbar
+        onOpenSearch={() => setIsSearchOpen(true)}
+        onRefreshProducts={fetchProducts}
+        trackedCount={products.length}
+      />
+
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Metric Cards */}
+        <StatsCards products={products} />
+
+        {/* Loading Spinner for Initial Load */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-24 text-slate-400">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-3" />
+            <p className="text-sm">Connecting to database and loading tracked items...</p>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {/* Price Chart Section (shown if a product is selected) */}
+            {selectedProduct && (
+              <section>
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    Live Price History & Trends
+                  </h2>
+                  {loadingHistory && (
+                    <span className="text-xs text-blue-400 flex items-center space-x-1">
+                      <RefreshCw className="w-3 h-3 animate-spin" />
+                      <span>Updating chart...</span>
+                    </span>
+                  )}
+                </div>
+                <PriceChart product={selectedProduct} history={priceHistory} />
+              </section>
+            )}
+
+            {/* Tracked Products Table */}
+            <section>
+              <ProductTable
+                products={products}
+                selectedProductId={selectedProduct?.id || null}
+                onSelectProduct={p => setSelectedProduct(p)}
+                onViewLogs={handleViewLogs}
+                onScrapeNow={handleScrapeNow}
+                onUntrack={handleUntrack}
+                scrapingIds={scrapingIds}
+              />
+            </section>
+          </div>
+        )}
+      </main>
+
+      {/* Product Search & Track Modal */}
+      <ProductSearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+        onProductTracked={newProd => {
+          fetchProducts();
+          setSelectedProduct(newProd);
+          setIsSearchOpen(false);
+        }}
+        trackedProductIds={trackedProductIds}
+      />
+
+      {/* Honest Scrape Logs Modal */}
+      {logsProduct && (
+        <ScrapeLogsModal
+          isOpen={Boolean(logsProduct)}
+          onClose={() => setLogsProduct(null)}
+          product={logsProduct}
+          logs={scrapeLogs}
+        />
+      )}
+
+      {/* Footer */}
+      <footer className="border-t border-slate-900 bg-slate-950 py-6 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-2">
+          <p>
+            INE Software Engineer Intern Assignment — Built by{' '}
+            <span className="text-slate-300 font-semibold">Sriyash Mishra</span>
+          </p>
+          <p className="text-slate-400 font-mono">
+            Automated Headless + Headed Browser Scraper Engine
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
+};
+export default App;

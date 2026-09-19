@@ -1,0 +1,25 @@
+# Node dependencies
+node_modules/
+.npm/
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Build artifacts
+dist/
+build/
+.cache/
+
+# OS and Editor files
+.DS_Store
+*.log
+.vscode/
+.idea/
+
+# Playwright artifacts
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/

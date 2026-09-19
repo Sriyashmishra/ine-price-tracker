@@ -1,0 +1,25 @@
+{
+  "name": "ine-price-tracker-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Full-stack Product Price Tracker with resilient Playwright web scraping for INE",
+  "scripts": {
+    "install:all": "npm install --prefix server && npm install --prefix client",
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "build:server": "npm run build --prefix server",
+    "build:client": "npm run build --prefix client",
+    "scrape:headed": "npm run scrape:headed --prefix server",
+    "scrape:test": "npm run scrape:test --prefix server"
+  },
+  "keywords": [
+    "price-tracker",
+    "playwright",
+    "web-scraping",
+    "react",
+    "express",
+    "supabase"
+  ],
+  "author": "Sriyash Mishra",
+  "license": "MIT"
+}

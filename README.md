@@ -10,6 +10,13 @@ A full-stack automated price and stock tracking platform tailored for the **INE 
 
 ---
 
+## 🌐 Live Deployment Links
+- **Live Web Application (Vercel)**: [https://ine-price-tracker-sage.vercel.app](https://ine-price-tracker-sage.vercel.app/)
+- **Backend API & Scraper Engine (Render)**: [https://ine-price-tracker-backend-45sw.onrender.com](https://ine-price-tracker-backend-45sw.onrender.com/)
+- **Target Storefront**: [https://demo.inelabteamdev.com](https://demo.inelabteamdev.com/)
+
+---
+
 ## 📑 Table of Contents
 1. [Key Features](#-key-features)
 2. [Architecture Overview](#-architecture-overview)

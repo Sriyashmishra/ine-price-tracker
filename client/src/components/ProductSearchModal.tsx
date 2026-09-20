@@ -106,13 +106,13 @@ export const ProductSearchModal: React.FC<ProductSearchModalProps> = ({
             </div>
           )}
 
-          {results.map(item => {
+          {results.map((item, index) => {
             const isTracked = trackedProductIds.has(item.id);
             const isTracking = trackingId === item.id;
 
             return (
               <div
-                key={item.id}
+                key={`${item.id}-${item.sku || index}`}
                 className="pt-2.5 first:pt-0 flex items-center justify-between gap-4 p-3 rounded-xl hover:bg-slate-800/50 transition group"
               >
                 <div className="min-w-0 flex-1">

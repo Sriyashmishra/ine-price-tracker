@@ -68,6 +68,27 @@ export class StoreScraper {
       viewport: { width: 1280, height: 800 },
     });
 
+    // Suppress and disable all cookie overlays and banners at the DOM engine level
+    await context.addInitScript(() => {
+      const style = document.createElement('style');
+      style.innerHTML = `
+        .cookie-overlay, .cookie-banner, [class*="cookie"] {
+          display: none !important;
+          visibility: hidden !important;
+          pointer-events: none !important;
+          opacity: 0 !important;
+          z-index: -999999 !important;
+        }
+      `;
+      if (document.head) {
+        document.head.appendChild(style);
+      } else {
+        document.addEventListener('DOMContentLoaded', () => {
+          if (document.head) document.head.appendChild(style);
+        });
+      }
+    });
+
     try {
       while (attempt < maxRetries) {
         attempt++;
@@ -234,7 +255,14 @@ export class StoreScraper {
 
       await page.evaluate(() => document.querySelectorAll('.cookie-overlay, .cookie-banner').forEach(e => e.remove())).catch(() => {});
       onProgress('Clicking "Reveal price"...');
-      await revealBtn.click();
+      try {
+        await revealBtn.click({ timeout: 5000, force: true });
+      } catch {
+        const btnBox = await revealBtn.boundingBox();
+        if (btnBox) {
+          await page.mouse.click(btnBox.x + btnBox.width / 2, btnBox.y + btnBox.height / 2);
+        }
+      }
 
       // Handle the deliberate transient dropped clicks in mock store:
       // If after 1200ms it's still idle and not loading/success, click again
@@ -244,7 +272,14 @@ export class StoreScraper {
         onProgress('Transient click drop detected. Re-clicking "Reveal price"...');
         await page.mouse.move(box.x + 25, box.y + 25);
         await page.waitForTimeout(100);
-        await revealBtn.click();
+        try {
+          await revealBtn.click({ timeout: 5000, force: true });
+        } catch {
+          const btnBox = await revealBtn.boundingBox();
+          if (btnBox) {
+            await page.mouse.click(btnBox.x + btnBox.width / 2, btnBox.y + btnBox.height / 2);
+          }
+        }
       }
     }
 

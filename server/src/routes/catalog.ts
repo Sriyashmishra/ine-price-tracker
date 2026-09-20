@@ -68,9 +68,15 @@ async function getCatalog(): Promise<CatalogItem[]> {
       }
     }
 
-    cachedCatalog = items;
+    const uniqueMap = new Map<number, CatalogItem>();
+    for (const item of items) {
+      if (item && item.id && !uniqueMap.has(item.id)) {
+        uniqueMap.set(item.id, item);
+      }
+    }
+    cachedCatalog = Array.from(uniqueMap.values());
     lastFetchedTime = now;
-    console.log(`[Catalog] Successfully cached ${cachedCatalog.length} catalog items`);
+    console.log(`[Catalog] Successfully cached ${cachedCatalog.length} unique catalog items`);
     return cachedCatalog;
   } catch (err: any) {
     console.error('[Catalog] Error fetching catalog:', err.message);

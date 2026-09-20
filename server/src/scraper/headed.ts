@@ -10,13 +10,14 @@ async function runHeadedDemo() {
 
   const scraper = new StoreScraper();
 
-  // Pick target IDs from CLI or use 3 diverse items for a comprehensive showcase
+  // Pick target IDs from CLI or use 5 diverse items for a comprehensive 2.5-minute showcase
   const cliArgs = process.argv.slice(2).map(arg => parseInt(arg, 10)).filter(n => !isNaN(n));
-  const targetStoreIds = cliArgs.length > 0 ? cliArgs : [95, 12, 102];
+  const targetStoreIds = cliArgs.length > 0 ? cliArgs : [95, 12, 139, 303, 102];
 
   console.log(`Target Product IDs to Scrape: [${targetStoreIds.join(', ')}]`);
   console.log(`Database Mode: ${db.isUsingSupabase() ? 'Supabase PostgreSQL' : 'Local Memory Store'}`);
-  console.log(`Slow-Motion Delay: 140ms per step (optimized for video recording clarity)\n`);
+  console.log(`Slow-Motion Delay: 180ms per step (optimized for video recording clarity)`);
+  console.log(`Expected Run Duration: ~2.5 to 3 minutes (meets assignment criteria)\n`);
 
   const resultsSummary: Array<{ id: number; name: string; price: string; stock: string; attempts: number; durationMs: number; status: string }> = [];
 

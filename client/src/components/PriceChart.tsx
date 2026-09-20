@@ -19,9 +19,9 @@ interface PriceChartProps {
 export const PriceChart: React.FC<PriceChartProps> = ({ product, history }) => {
   if (history.length === 0) {
     return (
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-8 text-center">
-        <p className="text-slate-400 text-sm">No price history points recorded yet for this product.</p>
-        <p className="text-xs text-slate-500 mt-1">Run an on-demand scrape to record the first price point.</p>
+      <div className="bg-[#0e131d] border border-[#1c2538] rounded-xl p-8 text-center">
+        <p className="text-zinc-400 text-xs font-mono">NO HISTORICAL PRICE POINTS FOR THIS SKU YET</p>
+        <p className="text-[11px] text-zinc-500 mt-1">Execute an on-demand telemetry scrape to record the first price quote.</p>
       </div>
     );
   }
@@ -47,50 +47,52 @@ export const PriceChart: React.FC<PriceChartProps> = ({ product, history }) => {
   const priceDiff = currentPrice - firstPrice;
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm">
+    <div className="bg-[#0e131d] border border-[#1c2538] rounded-xl p-6 shadow-md">
       {/* Chart Header & Summary Pills */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
-              {product.category || 'Product'}
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-[#141a26] text-emerald-300 border border-emerald-500/25 font-mono">
+              {product.category || 'ASSET'}
             </span>
-            <span className="text-xs text-slate-400 font-mono">#{product.sku}</span>
+            <span className="text-xs text-zinc-400 font-mono">#{product.sku}</span>
           </div>
-          <h3 className="text-lg font-bold text-white mt-1">{product.name}</h3>
-          <p className="text-xs text-slate-400">Price trend across unattended scrape runs</p>
+          <h3 className="text-base font-bold text-white mt-1.5 font-sans tracking-tight">{product.name}</h3>
+          <p className="text-xs text-zinc-400 font-mono">Time-series price trajectory across unattended scrape runs</p>
         </div>
 
         {/* Stats Row */}
-        <div className="flex items-center gap-3">
-          <div className="bg-slate-800/80 border border-slate-700/60 rounded-xl px-3.5 py-2">
+        <div className="flex items-center gap-2.5">
+          <div className="bg-[#131924] border border-[#212b3e] rounded-lg px-3.5 py-2">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Current</span>
+              <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block font-mono">Current</span>
               {priceDiff < 0 ? (
-                <span className="flex items-center text-[10px] text-emerald-400 font-semibold">
+                <span className="flex items-center text-[10px] text-emerald-400 font-semibold font-mono">
                   <TrendingDown className="w-3 h-3 mr-0.5" />
                   -₹{Math.abs(priceDiff).toLocaleString('en-IN')}
                 </span>
               ) : priceDiff > 0 ? (
-                <span className="flex items-center text-[10px] text-rose-400 font-semibold">
+                <span className="flex items-center text-[10px] text-rose-400 font-semibold font-mono">
                   <TrendingUp className="w-3 h-3 mr-0.5" />
                   +₹{priceDiff.toLocaleString('en-IN')}
                 </span>
               ) : (
-                <span className="flex items-center text-[10px] text-slate-400">
+                <span className="flex items-center text-[10px] text-zinc-400">
                   <Minus className="w-3 h-3" />
                 </span>
               )}
             </div>
-            <span className="text-base font-bold text-white">₹{currentPrice.toLocaleString('en-IN')}</span>
+            <span className="text-sm font-bold text-white font-mono">₹{currentPrice.toLocaleString('en-IN')}</span>
           </div>
-          <div className="bg-slate-800/80 border border-slate-700/60 rounded-xl px-3.5 py-2">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Lowest</span>
-            <span className="text-base font-bold text-emerald-400">₹{minPrice.toLocaleString('en-IN')}</span>
+
+          <div className="bg-[#131924] border border-[#212b3e] rounded-lg px-3.5 py-2">
+            <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block font-mono">Lowest</span>
+            <span className="text-sm font-bold text-emerald-400 font-mono">₹{minPrice.toLocaleString('en-IN')}</span>
           </div>
-          <div className="bg-slate-800/80 border border-slate-700/60 rounded-xl px-3.5 py-2">
-            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">Highest</span>
-            <span className="text-base font-bold text-amber-400">₹{maxPrice.toLocaleString('en-IN')}</span>
+
+          <div className="bg-[#131924] border border-[#212b3e] rounded-lg px-3.5 py-2">
+            <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider block font-mono">Highest</span>
+            <span className="text-sm font-bold text-amber-400 font-mono">₹{maxPrice.toLocaleString('en-IN')}</span>
           </div>
         </div>
       </div>
@@ -101,36 +103,38 @@ export const PriceChart: React.FC<PriceChartProps> = ({ product, history }) => {
           <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
             <defs>
               <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
+                <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
+                <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.5} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#1c2538" opacity={0.7} />
             <XAxis
               dataKey="timeLabel"
-              stroke="#64748b"
-              fontSize={12}
+              stroke="#526079"
+              fontSize={11}
+              fontFamily="monospace"
               tickLine={false}
-              axisLine={{ stroke: '#334155' }}
+              axisLine={{ stroke: '#1c2538' }}
             />
             <YAxis
-              stroke="#64748b"
-              fontSize={12}
+              stroke="#526079"
+              fontSize={11}
+              fontFamily="monospace"
               tickLine={false}
-              axisLine={{ stroke: '#334155' }}
-              tickFormatter={val => `₹${val}`}
-              domain={['dataMin - 10', 'dataMax + 10']}
+              axisLine={{ stroke: '#1c2538' }}
+              tickFormatter={val => `₹${val.toLocaleString('en-IN')}`}
+              domain={['dataMin - 100', 'dataMax + 100']}
             />
             <Tooltip
               content={({ active, payload }) => {
                 if (active && payload && payload.length) {
                   const data = payload[0].payload;
                   return (
-                    <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl shadow-xl text-xs">
-                      <p className="text-slate-400">{data.dateLabel} at {data.timeLabel}</p>
-                      <p className="text-base font-bold text-blue-400 mt-1">₹{data.price.toLocaleString('en-IN')}</p>
-                      <p className="text-[11px] text-slate-300 mt-0.5">
-                        Stock: <span className={data.inStock ? 'text-emerald-400 font-medium' : 'text-rose-400 font-medium'}>{data.stockStatus}</span>
+                    <div className="bg-[#0b0f17] border border-[#232f46] p-3 rounded-lg shadow-2xl text-xs font-mono">
+                      <p className="text-zinc-400 text-[11px]">{data.dateLabel} at {data.timeLabel}</p>
+                      <p className="text-sm font-bold text-emerald-400 mt-1">₹{data.price.toLocaleString('en-IN')}</p>
+                      <p className="text-[10px] text-zinc-300 mt-0.5">
+                        Stock: <span className={data.inStock ? 'text-emerald-400' : 'text-rose-400'}>{data.stockStatus}</span>
                       </p>
                     </div>
                   );
@@ -141,8 +145,8 @@ export const PriceChart: React.FC<PriceChartProps> = ({ product, history }) => {
             <Area
               type="monotone"
               dataKey="price"
-              stroke="#3b82f6"
-              strokeWidth={2.5}
+              stroke="#10b981"
+              strokeWidth={2.2}
               fillOpacity={1}
               fill="url(#priceGradient)"
             />

@@ -68,8 +68,9 @@ export class StoreScraper {
       viewport: { width: 1280, height: 800 },
     });
 
-    // Suppress and disable all cookie overlays and banners at the DOM engine level
+    // Suppress cookie overlays & inject prominent screencast cursor at browser context level
     await context.addInitScript(() => {
+      // 1. Style to neutralize cookie overlays & format high-visibility screencast cursor
       const style = document.createElement('style');
       style.innerHTML = `
         .cookie-overlay, .cookie-banner, [class*="cookie"] {
@@ -79,14 +80,135 @@ export class StoreScraper {
           opacity: 0 !important;
           z-index: -999999 !important;
         }
+
+        #screencast-cursor-container {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          pointer-events: none !important;
+          z-index: 2147483647 !important;
+          transform: translate3d(-3px, -2px, 0);
+          display: block !important;
+          will-change: transform, left, top;
+        }
+
+        .screencast-halo {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 34px;
+          height: 34px;
+          border-radius: 50%;
+          background: rgba(245, 158, 11, 0.42);
+          box-shadow: 0 0 16px rgba(245, 158, 11, 0.85), 0 0 32px rgba(245, 158, 11, 0.4);
+          transform: translate(-50%, -50%);
+          pointer-events: none;
+          transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+        }
+
+        .screencast-cursor-icon {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 28px;
+          height: 28px;
+          pointer-events: none;
+          filter: drop-shadow(0 2px 6px rgba(0,0,0,0.85));
+          transform: rotate(-8deg);
+          transition: transform 0.1s ease;
+        }
+
+        .screencast-ripple {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 52px;
+          height: 52px;
+          border-radius: 50%;
+          border: 3px solid #10b981;
+          transform: translate(-50%, -50%) scale(0.2);
+          opacity: 0;
+          pointer-events: none;
+        }
+
+        #screencast-cursor-container.clicking .screencast-halo {
+          background: rgba(16, 185, 129, 0.65);
+          box-shadow: 0 0 22px rgba(16, 185, 129, 0.95);
+          transform: translate(-50%, -50%) scale(1.35);
+        }
+
+        #screencast-cursor-container.clicking .screencast-cursor-icon {
+          transform: rotate(-8deg) scale(0.88);
+        }
+
+        #screencast-cursor-container.clicking .screencast-ripple {
+          animation: screencast-click-wave 0.45s ease-out forwards;
+        }
+
+        @keyframes screencast-click-wave {
+          0% {
+            transform: translate(-50%, -50%) scale(0.2);
+            opacity: 1;
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(1.9);
+            opacity: 0;
+          }
+        }
       `;
+
       if (document.head) {
         document.head.appendChild(style);
       } else {
-        document.addEventListener('DOMContentLoaded', () => {
-          if (document.head) document.head.appendChild(style);
-        });
+        document.documentElement.appendChild(style);
       }
+
+      // 2. High-visibility cursor element with crisp macOS pointer arrow + spotlight halo
+      const container = document.createElement('div');
+      container.id = 'screencast-cursor-container';
+      container.innerHTML = `
+        <div class="screencast-halo"></div>
+        <div class="screencast-ripple"></div>
+        <svg class="screencast-cursor-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 3L11.5 21L14.2 13.8L21 11.2L4 3Z" fill="#0f172a" stroke="#ffffff" stroke-width="2.2" stroke-linejoin="round"/>
+        </svg>
+      `;
+
+      function mountCursor() {
+        if (!document.documentElement.contains(container)) {
+          document.documentElement.appendChild(container);
+        }
+      }
+
+      mountCursor();
+      document.addEventListener('DOMContentLoaded', mountCursor);
+
+      function updatePosition(x: number, y: number, isClicking: boolean = false) {
+        mountCursor();
+        container.style.left = x + 'px';
+        container.style.top = y + 'px';
+        if (isClicking) {
+          container.classList.add('clicking');
+        } else {
+          container.classList.remove('clicking');
+        }
+      }
+
+      (window as any).__updateScreencastCursor = updatePosition;
+
+      window.addEventListener('mousemove', (e) => {
+        updatePosition(e.clientX, e.clientY, (window as any).__cursorIsDown || false);
+      }, { capture: true, passive: true });
+
+      window.addEventListener('mousedown', (e) => {
+        (window as any).__cursorIsDown = true;
+        updatePosition(e.clientX, e.clientY, true);
+      }, { capture: true, passive: true });
+
+      window.addEventListener('mouseup', (e) => {
+        (window as any).__cursorIsDown = false;
+        updatePosition(e.clientX, e.clientY, false);
+      }, { capture: true, passive: true });
     });
 
     try {
@@ -205,6 +327,12 @@ export class StoreScraper {
       await page.goto(productUrl, { waitUntil: 'commit', timeout: 15000 }).catch(() => {});
     }
 
+    // Allow page to settle
+    await page.waitForTimeout(800);
+
+    // Initial cursor placement
+    await page.mouse.move(200, 150, { steps: 3 });
+
     // 1. Check and dismiss cookie overlay if present
     try {
       await page.evaluate(() => {
@@ -235,57 +363,63 @@ export class StoreScraper {
         throw new Error('Could not compute price-block bounding box');
       }
 
-      // Simulate mouse movements across the price block (>8 moves, >600ms dwell time)
-      await page.mouse.move(box.x + 10, box.y + 10);
-      for (let i = 0; i < 10; i++) {
-        const moveX = box.x + 15 + Math.random() * (box.width - 30);
-        const moveY = box.y + 15 + Math.random() * (box.height - 30);
-        await page.mouse.move(moveX, moveY, { steps: 2 });
-        await page.waitForTimeout(80);
+      // Smoothly move into the price block
+      await page.mouse.move(box.x + 30, box.y + 25, { steps: 5 });
+      await page.waitForTimeout(80);
+
+      // Simulate human-like mouse movements across the price block (>8 moves, >600ms dwell time)
+      for (let i = 0; i < 9; i++) {
+        const moveX = box.x + 20 + Math.random() * (box.width - 40);
+        const moveY = box.y + 20 + Math.random() * (box.height - 40);
+        await page.mouse.move(moveX, moveY, { steps: 3 });
+        await page.waitForTimeout(85);
       }
-      // Guarantee dwell time
+      // Dwell pause over the price area to guarantee >600ms threshold
       await page.waitForTimeout(300);
 
       // Locate the "Reveal price" button
-      const revealBtn = page.locator('button:has-text("Reveal price")');
-      await revealBtn.waitFor({ state: 'visible', timeout: 5000 });
+      const revealBtn = page.locator('button:has-text("Reveal price"), button[aria-label*="Reveal price"], .reveal-price-btn');
+      await revealBtn.waitFor({ state: 'visible', timeout: 8000 });
 
-      // Ensure button is not disabled
-      await page.waitForFunction(
-        () => {
-          const btn = document.querySelector('button[aria-label="Reveal price"]') as HTMLButtonElement;
-          return btn && !btn.disabled;
-        },
-        { timeout: 5000 }
-      );
+      // Move cursor directly onto the button so it's clearly visible before clicking
+      const btnBox = await revealBtn.boundingBox();
+      if (btnBox) {
+        const btnCenterX = Math.round(btnBox.x + btnBox.width / 2);
+        const btnCenterY = Math.round(btnBox.y + btnBox.height / 2);
 
-      await page.evaluate(() => document.querySelectorAll('.cookie-overlay, .cookie-banner').forEach(e => e.remove())).catch(() => {});
-      onProgress('Clicking "Reveal price"...');
-      try {
-        await revealBtn.click({ timeout: 5000, force: true });
-      } catch {
-        const btnBox = await revealBtn.boundingBox();
-        if (btnBox) {
-          await page.mouse.click(btnBox.x + btnBox.width / 2, btnBox.y + btnBox.height / 2);
-        }
+        onProgress('Moving cursor onto "Reveal price" button...');
+        await page.mouse.move(btnCenterX, btnCenterY, { steps: 6 });
+        await page.waitForTimeout(400);
+
+        // Ensure button is not disabled
+        await page.waitForFunction(
+          () => {
+            const btn = document.querySelector('button[aria-label="Reveal price"], button:has-text("Reveal price")') as HTMLButtonElement;
+            return btn && !btn.disabled;
+          },
+          { timeout: 5000 }
+        ).catch(() => {});
+
+        await page.evaluate(() => document.querySelectorAll('.cookie-overlay, .cookie-banner').forEach(e => e.remove())).catch(() => {});
+        onProgress('Clicking "Reveal price"...');
+        await page.mouse.down();
+        await page.waitForTimeout(120);
+        await page.mouse.up();
+        await revealBtn.click({ timeout: 5000, force: true }).catch(() => {});
       }
 
-      // Handle the deliberate transient dropped clicks in mock store:
-      // If after 1200ms it's still idle and not loading/success, click again
-      await page.waitForTimeout(1200);
+      // Handle the deliberate transient dropped clicks in mock store (17.5% drop rate)
+      await page.waitForTimeout(1100);
       const isStillIdle = await page.locator('.price-block.price-idle').isVisible().catch(() => false);
-      if (isStillIdle) {
+      if (isStillIdle && btnBox) {
         onProgress('Transient click drop detected. Re-clicking "Reveal price"...');
-        await page.mouse.move(box.x + 25, box.y + 25);
+        const btnCenterX = Math.round(btnBox.x + btnBox.width / 2);
+        const btnCenterY = Math.round(btnBox.y + btnBox.height / 2);
+        await page.mouse.move(btnCenterX, btnCenterY, { steps: 4 });
+        await page.mouse.down();
         await page.waitForTimeout(100);
-        try {
-          await revealBtn.click({ timeout: 5000, force: true });
-        } catch {
-          const btnBox = await revealBtn.boundingBox();
-          if (btnBox) {
-            await page.mouse.click(btnBox.x + btnBox.width / 2, btnBox.y + btnBox.height / 2);
-          }
-        }
+        await page.mouse.up();
+        await revealBtn.click({ timeout: 5000, force: true }).catch(() => {});
       }
     }
 
@@ -305,16 +439,33 @@ export class StoreScraper {
       throw new Error('Timed out waiting for store price resolution');
     }
 
+    // Pause 2 seconds so the viewer watching the screen recording can clearly observe the revealed price on screen
+    await page.waitForTimeout(2000);
+
+    // Wait for the price text to be fully populated inside .price-main
+    await page.waitForFunction(() => {
+      const pm = document.querySelector('.price-main');
+      if (!pm) return false;
+      const el = pm.querySelector('[class*="pv-"], b, strong');
+      return el && el.textContent && el.textContent.trim().length > 0;
+    }, { timeout: 6000 }).catch(() => {});
+
     // 5. Extract genuine price (anti-honeypot: avoid display: none spans)
     const rawPriceText = await page.evaluate(() => {
       const priceMain = document.querySelector('.price-main');
       if (!priceMain) return null;
 
-      // First, check for primary prominent price element (tag 'b', 'strong', or class containing 'pv-')
-      const primaryEl = priceMain.querySelector('b, strong, [class*="pv-"]') as HTMLElement | null;
+      // First, check for primary prominent price element (class containing 'pv-' or bold)
+      const primaryEl = priceMain.querySelector('[class*="pv-"], b, strong') as HTMLElement | null;
       if (primaryEl) {
         const style = window.getComputedStyle(primaryEl);
-        if (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
+        if (style.display !== 'none' && style.visibility !== 'hidden') {
+          // If digits are split across multiple spans, concatenate their text directly
+          const childSpans = Array.from(primaryEl.querySelectorAll('span'));
+          if (childSpans.length > 0) {
+            const combined = childSpans.map(s => s.textContent || '').join('');
+            if (combined.trim().length > 0) return combined.trim();
+          }
           const text = primaryEl.textContent?.trim() || '';
           if (text.length > 0) return text;
         }
@@ -329,7 +480,6 @@ export class StoreScraper {
         if (
           style.display === 'none' ||
           style.visibility === 'hidden' ||
-          parseFloat(style.opacity || '1') < 0.9 ||
           el.getAttribute('aria-hidden') === 'true' ||
           el.classList.contains('price-value') ||
           el.classList.contains('amount') ||

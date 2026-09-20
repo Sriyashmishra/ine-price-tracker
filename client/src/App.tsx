@@ -125,7 +125,7 @@ export const App: React.FC = () => {
   const trackedProductIds = new Set(products.map(p => p.store_product_id));
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen bg-[#080a0f] text-zinc-100 flex flex-col selection:bg-emerald-500/20 selection:text-emerald-200">
       {/* Header / Navbar */}
       <Navbar
         onOpenSearch={() => setIsSearchOpen(true)}
@@ -140,9 +140,9 @@ export const App: React.FC = () => {
 
         {/* Loading Spinner for Initial Load */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-24 text-slate-400">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-3" />
-            <p className="text-sm">Connecting to database and loading tracked items...</p>
+          <div className="flex flex-col items-center justify-center py-24 text-zinc-400">
+            <Loader2 className="w-8 h-8 animate-spin text-emerald-400 mb-3" />
+            <p className="text-xs font-mono text-zinc-400">CONNECTING TO REPOSITORY & INGESTING TRACKED ASSETS...</p>
           </div>
         ) : (
           <div className="space-y-8">
@@ -150,13 +150,13 @@ export const App: React.FC = () => {
             {selectedProduct && (
               <section>
                 <div className="flex items-center justify-between mb-3">
-                  <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 font-mono">
                     Live Price History & Trends
                   </h2>
                   {loadingHistory && (
-                    <span className="text-xs text-blue-400 flex items-center space-x-1">
+                    <span className="text-xs text-emerald-400 flex items-center space-x-1 font-mono">
                       <RefreshCw className="w-3 h-3 animate-spin" />
-                      <span>Updating chart...</span>
+                      <span>Syncing timeseries...</span>
                     </span>
                   )}
                 </div>
@@ -203,14 +203,14 @@ export const App: React.FC = () => {
       )}
 
       {/* Footer */}
-      <footer className="border-t border-slate-900 bg-slate-950 py-6 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 gap-2">
+      <footer className="border-t border-[#1a2333] bg-[#0c1017]/80 backdrop-blur-md py-6 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-zinc-400 gap-2">
           <p>
             INE Software Engineer Intern Assignment — Built by{' '}
-            <span className="text-slate-300 font-semibold">Sriyash Mishra</span>
+            <span className="text-emerald-400 font-semibold">Sriyash Mishra</span>
           </p>
-          <p className="text-slate-400 font-mono">
-            Automated Headless + Headed Browser Scraper Engine
+          <p className="text-zinc-500 font-mono text-[11px]">
+            Playwright Stealth Scraper • PostgreSQL Dual Storage Engine
           </p>
         </div>
       </footer>

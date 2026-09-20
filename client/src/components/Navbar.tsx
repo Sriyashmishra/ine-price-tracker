@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, RefreshCw } from 'lucide-react';
+import { Search, RefreshCw, Activity } from 'lucide-react';
 import { api } from '../services/api.js';
 
 interface NavbarProps {
@@ -34,28 +34,31 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-30 shadow-lg">
+    <header className="bg-[#0c1017]/90 backdrop-blur-md border-b border-[#1c2436] sticky top-0 z-30 shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand */}
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-md shadow-blue-500/20 text-white font-bold text-lg">
-            INE
+        <div className="flex items-center space-x-3.5">
+          <div className="w-9 h-9 rounded-lg bg-[#141b27] border border-[#232f46] flex items-center justify-center text-emerald-400 font-extrabold text-sm tracking-wider shadow-inner">
+            <Activity className="w-5 h-5 text-emerald-400" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="font-bold text-lg tracking-tight text-white">Price Tracker</span>
-              <span className="px-2 py-0.5 text-xs font-semibold bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-full">
-                Auto Scraper
+              <span className="font-bold text-base tracking-tight text-white font-sans">
+                INE <span className="text-emerald-400 font-semibold">PRICETRACK</span>
+              </span>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1.5" />
+                TELEMETRY ACTIVE
               </span>
             </div>
-            <p className="text-xs text-slate-400">INE Mock Store Resilience Engine</p>
+            <p className="text-[11px] text-zinc-400 font-normal">Resilient Autonomous Price & Stock Surveillance</p>
           </div>
         </div>
 
         {/* Actions */}
         <div className="flex items-center space-x-3">
           {batchMsg && (
-            <span className="text-xs bg-slate-800 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-lg">
+            <span className="text-xs bg-[#141b27] border border-[#232f46] text-emerald-300 px-3 py-1.5 rounded-lg shadow-sm font-mono text-[11px]">
               {batchMsg}
             </span>
           )}
@@ -65,18 +68,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             onClick={handleTriggerBatch}
             disabled={isTriggeringBatch || trackedCount === 0}
             title="Simulate scheduled cron trigger across all tracked products"
-            className="flex items-center space-x-2 px-3.5 py-2 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            className="flex items-center space-x-2 px-3.5 py-2 text-xs font-medium bg-[#131924] hover:bg-[#1c2436] text-zinc-200 border border-[#232f46] rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isTriggeringBatch ? 'animate-spin text-blue-400' : ''}`} />
-            <span>{isTriggeringBatch ? 'Scraping All...' : 'Run Scheduled Scrape'}</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${isTriggeringBatch ? 'animate-spin text-emerald-400' : 'text-zinc-400'}`} />
+            <span>{isTriggeringBatch ? 'Batch Running...' : 'Trigger Cron Scrape'}</span>
           </button>
 
           <button
             type="button"
             onClick={onOpenSearch}
-            className="flex items-center space-x-2 px-4 py-2 text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-lg shadow-md shadow-blue-600/25 transition active:scale-[0.98]"
+            className="flex items-center space-x-2 px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg shadow-lg shadow-emerald-950/40 transition active:scale-[0.98] border border-emerald-500/30"
           >
-            <Search className="w-4 h-4" />
+            <Search className="w-3.5 h-3.5" />
             <span>Search & Track Product</span>
           </button>
         </div>

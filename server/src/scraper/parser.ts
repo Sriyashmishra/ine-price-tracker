@@ -52,18 +52,23 @@ export function parsePrice(rawText: string): number {
   cleaned = cleaned.replace(/\/\-.*$/i, ''); // e.g. "/- (incl. of all taxes)"
   cleaned = cleaned.replace(/\(incl\.?.*?\)/i, '');
   cleaned = cleaned.replace(/Deal price/i, '');
+  cleaned = cleaned.replace(/Updating.*$/i, '');
 
-  // 3. Comma handling:
-  // In INR/standard currency (e.g. ₹1,88,931 or ₹2,25,668), commas are grouping separators.
-  // Only convert comma to decimal if it is strictly European decimal format (e.g. "123,45" at end of string without dot).
-  if (/(?:\s|^)\d{1,3}(?:\.\d{3})*,\d{2}$/.test(cleaned.trim())) {
+  // 3. Strip currency identifiers first before numeric format checks
+  cleaned = cleaned.replace(/Rs\b|INR\b|[₹\$]/gi, '').trim();
+
+  // 4. European decimal format (e.g. 19.737,00 or 1.499,50)
+  if (/^\d{1,3}(?:\.\d{3})*,\d{2}$/.test(cleaned.replace(/\s+/g, ''))) {
     cleaned = cleaned.replace(/\./g, '').replace(',', '.');
   } else {
-    // Grouping separator: remove commas
+    // Standard currency / INR grouping commas: remove commas
     cleaned = cleaned.replace(/,/g, '');
   }
 
-  // 4. Extract first valid float/integer pattern
+  // 5. Handle mock store anti-scraping: collapse remaining whitespace between split-span digits
+  cleaned = cleaned.replace(/\s+/g, '');
+
+  // 6. Extract first valid float/integer pattern
   const match = cleaned.match(/(\d+(?:\.\d+)?)/);
   if (!match) {
     throw new Error(`Unable to extract numeric price from: "${rawText}" (cleaned: "${cleaned}")`);

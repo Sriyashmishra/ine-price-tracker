@@ -300,6 +300,6 @@ jobs:
 ---
 
 ## 👤 Author & Assignment Context
-- **Candidate**: Sriyash Mishra (Former SWE Intern, Google Slides LFS Team, Bangalore Kyoto West)
+- **Candidate**: Sriyash Mishra 
 - **Role**: Software Engineer Intern Assignment: Product Price Tracker
 - **Submission Date**: September 20, 2026

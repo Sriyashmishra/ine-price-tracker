@@ -160,10 +160,12 @@ export class StoreScraper {
           });
 
           if (!isFinalAttempt) {
-            // Exponential backoff with jitter: base * 2^(attempt - 1) + jitter
+            // Adaptive exponential backoff with jitter: longer backoff for 429 rate limits
+            const isRateLimit = err.message && err.message.includes('429');
+            const baseDelay = isRateLimit ? 3000 : config.scraper.retryDelayBaseMs;
             const backoffMs =
-              config.scraper.retryDelayBaseMs * Math.pow(2, attempt - 1) +
-              Math.floor(Math.random() * 500);
+              baseDelay * Math.pow(2, attempt - 1) +
+              Math.floor(Math.random() * 800);
             onProgress(`Waiting ${backoffMs}ms before retrying...`);
             await new Promise(r => setTimeout(r, backoffMs));
           }
@@ -197,7 +199,11 @@ export class StoreScraper {
     onProgress: (msg: string) => void
   ): Promise<ParsedScrapeResult> {
     onProgress(`Navigating to ${productUrl}...`);
-    await page.goto(productUrl, { waitUntil: 'domcontentloaded' });
+    try {
+      await page.goto(productUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+    } catch {
+      await page.goto(productUrl, { waitUntil: 'commit', timeout: 15000 }).catch(() => {});
+    }
 
     // 1. Check and dismiss cookie overlay if present
     try {
@@ -215,7 +221,7 @@ export class StoreScraper {
 
     // 2. Wait for the price block to render in the DOM
     const priceBlock = page.locator('.price-block');
-    await priceBlock.waitFor({ state: 'attached', timeout: 15000 });
+    await priceBlock.waitFor({ state: 'attached', timeout: 20000 });
 
     // 3. Check if price is already revealed or if we need the hover + reveal interaction
     const isAlreadyRevealed = await page.locator('.price-block.price-success').isVisible().catch(() => false);

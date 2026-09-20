@@ -5,6 +5,7 @@ import { catalogRouter } from './routes/catalog.js';
 import { productsRouter } from './routes/products.js';
 import { cronRouter } from './routes/cron.js';
 import { scraperInstance } from './scraper/scraper.js';
+import { db } from './db/client.js';
 
 const app = express();
 
@@ -48,10 +49,28 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   });
 });
 
-const server = app.listen(config.port, () => {
+const server = app.listen(config.port, async () => {
   console.log(`\n🚀 INE Price Tracker Server running on port ${config.port}`);
   console.log(`📡 Health check: http://localhost:${config.port}/api/health`);
   console.log(`🛒 Target Mock Store: ${config.mockStoreBaseUrl}`);
+
+  // Automatically resolve any products stuck in pending state on startup
+  try {
+    const products = await db.getProducts();
+    const pendingProducts = products.filter(
+      p => !p.current_price || p.last_scrape_status === 'PENDING'
+    );
+    if (pendingProducts.length > 0) {
+      console.log(`[Startup] Found ${pendingProducts.length} pending product(s). Resolving initial scrapes...`);
+      for (const p of pendingProducts) {
+        scraperInstance.scrapeProduct(p, { headless: true }).catch(err => {
+          console.error(`[Startup] Scrape failed for ${p.name}:`, err.message);
+        });
+      }
+    }
+  } catch (err: any) {
+    console.warn('[Startup] Could not check pending products:', err.message);
+  }
 });
 
 // Graceful shutdown

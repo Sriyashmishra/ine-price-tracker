@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc && npx playwright install chromium",
-    "start": "node dist/index.js",
+    "start": "npx playwright install chromium && node dist/index.js",
     "scrape:headed": "tsx src/scraper/headed.ts",
     "scrape:test": "tsx src/scraper/test_scraper.ts"
   },

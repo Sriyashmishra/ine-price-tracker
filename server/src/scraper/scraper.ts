@@ -23,16 +23,39 @@ export class StoreScraper {
 
   async init(headless: boolean = true, slowMo: number = 0): Promise<Browser> {
     if (!this.browser) {
-      this.browser = await chromium.launch({
-        headless,
-        slowMo,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-blink-features=AutomationControlled',
-        ],
-      });
+      const launchArgs = [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-blink-features=AutomationControlled',
+      ];
+
+      try {
+        this.browser = await chromium.launch({
+          headless,
+          slowMo,
+          args: launchArgs,
+        });
+      } catch (err: any) {
+        if (err.message && (err.message.includes("Executable doesn't exist") || err.message.includes("Looks like Playwright was just installed"))) {
+          console.warn('[Scraper] Chromium executable missing. Attempting emergency download via npx playwright install chromium...');
+          try {
+            const { execSync } = await import('child_process');
+            execSync('npx playwright install chromium', { stdio: 'inherit' });
+            this.browser = await chromium.launch({
+              headless,
+              slowMo,
+              args: launchArgs,
+            });
+          } catch (installErr: any) {
+            console.error('[Scraper] Failed emergency playwright install:', installErr.message);
+            throw err;
+          }
+        } else {
+          throw err;
+        }
+      }
     }
     return this.browser;
   }
@@ -60,13 +83,15 @@ export class StoreScraper {
     const startTime = Date.now();
     let attempt = 0;
     let lastError: Error | null = null;
+    let context: BrowserContext | null = null;
 
-    const browser = await this.init(headless, slowMo);
-    const context = await browser.newContext({
-      userAgent:
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      viewport: { width: 1280, height: 800 },
-    });
+    try {
+      const browser = await this.init(headless, slowMo);
+      context = await browser.newContext({
+        userAgent:
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        viewport: { width: 1280, height: 800 },
+      });
 
     // Suppress cookie overlays & inject prominent screencast cursor at browser context level
     await context.addInitScript(() => {
@@ -211,9 +236,8 @@ export class StoreScraper {
       }, { capture: true, passive: true });
     });
 
-    try {
-      while (attempt < maxRetries) {
-        attempt++;
+    while (attempt < maxRetries) {
+      attempt++;
         const attemptStartTime = Date.now();
         onProgress(`Attempt ${attempt}/${maxRetries} for "${product.name}" (ID: ${product.store_product_id})...`);
 
@@ -307,8 +331,30 @@ export class StoreScraper {
         totalDurationMs,
         error: lastError?.message || 'Exceeded max scrape retries',
       };
+    } catch (fatalErr: any) {
+      const totalDurationMs = Date.now() - startTime;
+      await db.updateProduct(product.id, {
+        last_scraped_at: new Date().toISOString(),
+        last_scrape_status: 'FAILED',
+      }).catch(() => {});
+      await db.addScrapeLog({
+        product_id: product.id,
+        store_product_id: product.store_product_id,
+        status: 'FAILED',
+        attempt_number: 1,
+        duration_ms: totalDurationMs,
+        error_message: fatalErr.message || 'Fatal scraper initialization error',
+      }).catch(() => {});
+      return {
+        success: false,
+        attempts: 1,
+        totalDurationMs,
+        error: fatalErr.message,
+      };
     } finally {
-      await context.close();
+      if (context) {
+        await context.close().catch(() => {});
+      }
     }
   }
 
